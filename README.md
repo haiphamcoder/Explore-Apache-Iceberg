@@ -47,3 +47,41 @@ Apache Iceberg offers several key features and advantages that make it a compell
 10. Open-Source and Vendor-Neutral: Iceberg is an open-source project under the Apache Software Foundation, ensuring transparency, flexibility, and vendor neutrality. Organizations can freely adopt and customize Iceberg to suit their specific needs without being locked into any proprietary solutions.
 
 These features and advantages make Apache Iceberg a powerful and versatile table format for big data management. Its support for schema evolution, transactional capabilities, time travel, efficient partitioning and indexing, centralized metadata management, compatibility with popular frameworks, scalability, and active community support contribute to its growing prominence in the big data landscape.
+
+## 4. Disadvantages of Apache Iceberg
+
+While Apache Iceberg is a powerful solution for data lake management, it does have some drawbacks. These include:
+
+- **Dependency on metadata:** Apache Iceberg relies heavily on metadata to store and retrieve data. As a result, it is vulnerable to errors if the metadata is not updated regularly.
+- **Limited support for query types:** Apache Iceberg supports only some types of queries, such as group by and count. This can limit its usefulness in some instances where complex queries are needed.
+- **Limited support for different types of data:** Apache Iceberg is limited in its support for different types of data, such as text, integers, and floats. This can make it challenging to store certain types of data in the table format, such as images.
+
+## 5. Getting Hands-On with Apache Iceberg
+
+*Prerequisite: You must have Docker installed. If you don’t, you can [download and install it here](https://docs.docker.com/get-docker/).*
+
+To keep things as simple as possible, we use this self-contained Docker container which has everything you need:
+
+```bash
+docker pull alexmerced/spark3-3-iceberg0-14
+```
+
+We then open up the container in interactive mode:
+
+```bash
+docker run --name iceberg-sandbox -it alexmerced/spark3-3-iceberg0-14
+```
+
+This Docker container comes with a simple command to open up SparkSQL configured for Iceberg:
+
+```bash
+iceberg-init
+```
+
+![Alt text](<Screenshot from 2023-11-15 16-37-46.png>)
+
+Now we are ready to test Iceberg. First of all, we’ll define a sample table to use during our tests, so we’ll create a table named “products” with information about some products and their reviews, using nested data types:
+
+```bash
+CREATE TABLE iceberg.db1.products (product_id int, info struct<name string, price decimal(3,2)>, discounts array<float>, feedback map<string, struct<comment string, rating int>>) USING ICEBERG;
+```
