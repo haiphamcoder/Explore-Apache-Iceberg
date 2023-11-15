@@ -343,3 +343,15 @@ In the end, the engine atomically updates the catalog to refer to the new metada
 ###### **Get Information from the Manifest Files**
 
 ##### Time-travel Query
+
+## 6. Optimizing the Performance of Iceberg Tables
+
+### 6.1. Compaction
+
+### 6.2. Sorting
+
+### 6.3. Partitioning
+
+### 6.4. Copy-on-Write vs. Merge-on-read
+
+### 6.5. Other Considerations
