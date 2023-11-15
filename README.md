@@ -1,5 +1,51 @@
 # Explore Apache Iceberg
 
+## Table of Contents
+
+- [Explore Apache Iceberg](#explore-apache-iceberg)
+  - [Table of Contents](#table-of-contents)
+  - [1. Introduction to Apache Iceberg](#1-introduction-to-apache-iceberg)
+  - [2. Architecture of Apache Iceberg](#2-architecture-of-apache-iceberg)
+    - [Data Layer](#data-layer)
+    - [Metadata Layer](#metadata-layer)
+    - [Iceberg Catalog](#iceberg-catalog)
+  - [3. Apache Iceberg Features](#3-apache-iceberg-features)
+    - [ACID Transactions](#acid-transactions)
+    - [Partition Evolution](#partition-evolution)
+    - [Hidden Partitioning](#hidden-partitioning)
+    - [Row-Level Table Operations](#row-level-table-operations)
+    - [Time-Travel](#time-travel)
+    - [Version Rollback](#version-rollback)
+    - [Scheme Evolution](#scheme-evolution)
+  - [4. Getting Hands-On with Apache Iceberg](#4-getting-hands-on-with-apache-iceberg)
+    - [4.1. Setting Up the Environment](#41-setting-up-the-environment)
+    - [4.2. Lifecycle of Write and Read Queries](#42-lifecycle-of-write-and-read-queries)
+      - [4.2.1. Write Queries in Apache Iceberg](#421-write-queries-in-apache-iceberg)
+        - [Create Table](#create-table)
+          - [Send Query to the Engine](#send-query-to-the-engine)
+          - [Write Metadata File](#write-metadata-file)
+          - [Update the Catalog File to Commit Changes](#update-the-catalog-file-to-commit-changes)
+        - [Insert Query](#insert-query)
+          - [Send Query to the Engine](#send-query-to-the-engine-1)
+          - [Check the Catalog](#check-the-catalog)
+          - [Write Data \& Metadata Files](#write-data--metadata-files)
+          - [Update the Catalog File to Commit Changes](#update-the-catalog-file-to-commit-changes-1)
+        - [MERGE Query](#merge-query)
+      - [4.2.2. Read Queries in Apache Iceberg](#422-read-queries-in-apache-iceberg)
+        - [SELECT Query](#select-query)
+          - [Send Query to the Engine](#send-query-to-the-engine-2)
+          - [Check the Catalog](#check-the-catalog-1)
+          - [Get Information from the Metadata File](#get-information-from-the-metadata-file)
+          - [Get Information from the Manifest List](#get-information-from-the-manifest-list)
+          - [Get Information from the Manifest Files](#get-information-from-the-manifest-files)
+        - [Time-travel Query](#time-travel-query)
+  - [5. Optimizing the Performance of Iceberg Tables](#5-optimizing-the-performance-of-iceberg-tables)
+    - [5.1. Compaction](#51-compaction)
+    - [5.2. Sorting](#52-sorting)
+    - [5.3. Partitioning](#53-partitioning)
+    - [5.4. Copy-on-Write vs. Merge-on-read](#54-copy-on-write-vs-merge-on-read)
+    - [5.5. Other Considerations](#55-other-considerations)
+
 ## 1. Introduction to Apache Iceberg
 
 Apache Iceberg is an open-source data table format originally developed at Netflix to overcome challenges faced by existing data lake formats like [Apache Hive](https://hive.apache.org/). Boasting capabilities such as support for ACID transactions, time-travel, in-place schema, partition evolution, data versioning, incremental processing, etc., it offers a fresh perspective on open data lakes, enabling fast and efficient data management for large analytics workloads.
@@ -81,9 +127,9 @@ Not only does Iceberg’s Snapshot isolation allow you query the data as it is, 
 
 Tables change, whether that means adding/removing a column, renaming a column, or changing a column’s data type. Regardless of how your table needs to evolve, Apache Iceberg gives you robust schema evolution features.
 
-## 5. Getting Hands-On with Apache Iceberg
+## 4. Getting Hands-On with Apache Iceberg
 
-### 5.1. Setting Up the Environment
+### 4.1. Setting Up the Environment
 
 *Prerequisite: You must have Docker installed. If you don’t, you can [download and install it here](https://docs.docker.com/get-docker/).*
 
@@ -109,13 +155,13 @@ iceberg-init
 
 Now we are ready to test Iceberg.
 
-### 5.2. Lifecycle of Write and Read Queries
+### 4.2. Lifecycle of Write and Read Queries
 
-#### 5.2.1. Write Queries in Apache Iceberg
+#### 4.2.1. Write Queries in Apache Iceberg
 
 The write process in Apache Iceberg involves a series of steps that enable query engines to efficiently insert and update data. When a write query is initiated, it is sent to the engine for parsing. The catalog is then consulted to ensure consistency and integrity in data and to write data as per the defined partition strategies. The metadata and data files are then written based on the query. Finally, the catalog file is updated to reflect the latest metadata, enabling subsequent read operations to access the most up-to-date version of the data.
 
-##### **Create Table**
+##### Create Table
 
 Let us first create an Iceberg table and understand the process underneath. Here is an example query to create a table called orders with four columns. This table is partitioned at the hour granularity of the order_ts field.
 
@@ -129,11 +175,11 @@ CREATE TABLE iceberg.db1.orders (
 USING ICEBERG;
 ```
 
-###### **Send Query to the Engine**
+###### Send Query to the Engine
 
 First, the query is sent to the query engine to parse it on their end. Then, since it is a CREATE statement, the engine will start creating and defining the table.
 
-###### **Write Metadata File**
+###### Write Metadata File
 
 At this point, the engine starts creating a metadata file v1.metadata.json in the data lake file system to store information about the table. A generic form of the URL of the path looks something like this - ://path/to/warehouse/db1/table1/metadata/v1.metadata.json. Based on the information on the table path, i.e. /path/to/warehouse/db1/table1 , the engine writes the metadata file. It then defines the schema of the table orders by specifying the columns, data types, etc. and stores it in the metadata file. And finally it assigns a unique identifier to the table, i.e. the table-uuid . Once the query executes successfully, the metadata file v1.metadata.json is written to the data lake file storage.
 
@@ -234,13 +280,13 @@ This is the current state of the table, i.e. you have created a table but it is 
 
 An important thing to note here is that since, to this point, you haven’t inserted any records, there is no actual data in the table, so there are no data files in your data lake. Therefore, the snapshot doesn’t point to any manifest list; hence, there are no manifest files.
 
-###### **Update the Catalog File to Commit Changes**
+###### Update the Catalog File to Commit Changes
 
 Finally, the engine updates the current metadata pointer to point to the v1.metadata.json file in the catalog file version-hint.text , as this is the present state of our table.
 
 ![Alt text](image-6.png)
 
-##### **Insert Query**
+##### Insert Query
 
 Now, let us insert some records into the table and understand how things work underneath. We have created a table called orders with 4 columns. For this demonstration, we will input the following values into the table: order_id: 123 , customer_id: 456 , order_amount: 36.17 , order_ts: timestamp(now()) . Here is the query.
 
@@ -253,18 +299,18 @@ INSERT INTO iceberg.db1.orders VALUES (
 );
 ```
 
-###### **Send Query to the Engine**
+###### Send Query to the Engine
 
 The query is sent to the query engine to parse it. Since this is an INSERT statement, the engine needs information about the table such as its schema to start with query planning.
 
-###### **Check the Catalog**
+###### Check the Catalog
 
 First, the query engine makes a request of the catalog to determine the location of the current metadata file and then reads it. Because we are using the Hadoop catalog, the engine will read the /orders/metadata/version-hint.txt file and see that the contents of the file is a single integer 1. Because of this and leveraging logic from the catalog implementation, the engine knows the current metadata file location is located at /orders/metadata/v1.metadata.json , the file our previous CREATE TABLE operation created. So, the engine will read this file. Although the engine’s motivation, in this case, is inserting new data files, it still interacts with the catalog primarily for two reasons.
 
 - The engine needs to understand the current schema of the table to adhere to it.
 - Learn about the partitioning scheme to organize data accordingly while writing.
 
-###### **Write Data & Metadata Files**
+###### Write Data & Metadata Files
 
 After the engine learns about the table schema and the partitioning scheme, it starts writing the new data files and the related metadata files. Here’s what happens in this process.
 
@@ -318,7 +364,7 @@ Finally, the engine creates a new metadata file, v2.metadata.json , with a new s
                 `-- version-hint.text
 ```
 
-###### **Update the Catalog File to Commit Changes**
+###### Update the Catalog File to Commit Changes
 
 Now, the engine goes to the catalog again to ensure no other snapshots were committed while this INSERT operation was being run. By doing this validation, Iceberg guarantees no interference in operations in a scenario where multiple writers write data concurrently. Iceberg makes sure that the one writing the data first will get committed first, and any conflicted write operation will go back to the previous steps and re-attempt until the write is successful or fails.
 
@@ -326,32 +372,32 @@ In the end, the engine atomically updates the catalog to refer to the new metada
 
 ![Alt text](image-7.png)
 
-##### **MERGE Query**
+##### MERGE Query
 
-#### Read Queries in Apache Iceberg
+#### 4.2.2. Read Queries in Apache Iceberg
 
-##### **SELECT Query**
+##### SELECT Query
 
-###### **Send Query to the Engine**
+###### Send Query to the Engine
 
-###### **Check the Catalog**
+###### Check the Catalog
 
-###### **Get Information from the Metadata File**
+###### Get Information from the Metadata File
 
-###### **Get Information from the Manifest List**
+###### Get Information from the Manifest List
 
-###### **Get Information from the Manifest Files**
+###### Get Information from the Manifest Files
 
 ##### Time-travel Query
 
-## 6. Optimizing the Performance of Iceberg Tables
+## 5. Optimizing the Performance of Iceberg Tables
 
-### 6.1. Compaction
+### 5.1. Compaction
 
-### 6.2. Sorting
+### 5.2. Sorting
 
-### 6.3. Partitioning
+### 5.3. Partitioning
 
-### 6.4. Copy-on-Write vs. Merge-on-read
+### 5.4. Copy-on-Write vs. Merge-on-read
 
-### 6.5. Other Considerations
+### 5.5. Other Considerations
