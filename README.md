@@ -8,6 +8,8 @@
     - [How Did We Get Here? A Brief History](#how-did-we-get-here-a-brief-history)
       - [Foundational Components of a System Designed for OLAP Workloads](#foundational-components-of-a-system-designed-for-olap-workloads)
       - [Bringing It All Together](#bringing-it-all-together)
+    - [Data Warehouse](#data-warehouse)
+      - [Pros and Cons of a Data Warehouse](#pros-and-cons-of-a-data-warehouse)
     - [What is Apache Iceberg?](#what-is-apache-iceberg)
   - [2. Architecture of Apache Iceberg](#2-architecture-of-apache-iceberg)
     - [Data Layer](#data-layer)
@@ -104,6 +106,43 @@ A compute engine is the final component needed in a system that can efficiently 
 #### Bringing It All Together
 
 Traditionally for OLAP workloads, these technical components have all been tightly coupled into a single system known as a data warehouse. Data warehouses allow organizations to store data coming in from a variety of sources and run analytical workloads on top of it. In the next section, we will discuss in detail the capabilities of a data warehouse, how the technical components are integrated, and the pros and cons of using such a system.
+
+### Data Warehouse
+
+A data warehouse (DW) or OLAP database is a centralized repository that supports storing large volumes of data ingested from various sources such as operational systems, application databases, and logs.
+
+Looking at the technical components described in the section above, this is how they get incorporated into a data warehouse. Figure 1-2 presents an architectural overview.
+
+![Figure 1-2. Technical components in a data warehouse](image-9.png)
+*Figure 1-2. Technical components in a data warehouse*
+
+A data warehouse owns all the technical components in a single system. So, all the data stored in a DW system is stored on the DW’s storage in the DW’s proprietary file format in the DW’s proprietary table format. This data is then managed exclusively by the DW’s storage engine, registered in the DW’s catalog, and can only be accessed by the user or analytical engines through the DW’s compute engine.
+
+Up until about 2015, the majority of DWs had the storage and compute components tightly coupled together on the same nodes, since most DWs were designed and run on-premises. However, this resulted in a lot of problems. Because datasets grew in volume faster and faster, as well as the number and intensity of workloads (i.e.,compute tasks running on the warehouse), scaling became a big issue. Specifically, there was no way to independently increase the compute and storage resources depending on your tasks. If your storage needs grew faster than your compute needs, it didn’t matter – you still needed to pay for additional compute even though you didn’t need it.
+
+This led to the next generation of data warehouses being built with a big focus on the cloud. The next generation of data warehouses was built starting in around 2015 as cloud-native, allowing you to separate these two components and scale compute and storage resources as you would like for your tasks, as well as even shut down compute when you weren’t using it and not lose your storage.
+
+#### Pros and Cons of a Data Warehouse
+
+While data warehouses, whether on-premises or cloud-based, make it easy for enterprises to make sense of all their historical data quickly, there are also certain areas where a warehouse still causes issues. We list the pros and cons of a data warehouse in Table 1-1.
+
+| Pros                                                                                                                    | Cons                                                                                                                                    |
+| :---------------------------------------------------------------------------------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------- |
+| A data warehouse serves as the single source of truth as it allows storing & querying data from various sources.        | Data in a warehouse is locked into a vendor-specific system that only the warehouse’s compute engine can use, thereby locking the data. |
+| Supports querying vast amounts of historical data enabling analytical workloads to run quickly.                         | Expensive in terms of both storage and computation. As the workload increases, the cost becomes hard to manage.                         |
+| Provides effective data governance policies to ensure data is available, usable and aligned with the security policies. | Mainly supports structured data.                                                                                                        |
+| Organizes the data for you, ensuring it’s optimized for querying                                                        | Organizations cannot run advanced analytical workloads such as machine learning natively in a data warehouse.                           |
+| Ensures data written to a table conforms to the technical schema                                                        |                                                                                                                                         |
+
+Data warehouses act as a centralized repository for organizations to store all their data coming in from a multitude of sources, allowing data consumers such as analysts and BI engineers to access data easily and quickly from one single source to start their analysis. In addition, the technological components powering data warehouses enable accessing vast volumes of data while supporting workloads such as business intelligence to run on top of it.
+
+Although data warehouses have been elemental in the democratization of data and allowed businesses to derive historical insights from varied data sources, they are primarily limited to relational workloads. For example, if you go back to the transportation company example from earlier and say now, you want to derive insights into how much total sales you will make in the next quarter. In this case, you will need to build a forecasting model using historical data. However, you cannot achieve this capability natively with a data warehouse as the compute engine & the other technical components are not designed for machine learning-based tasks. So, the only viable option is moving or exporting the data from the warehouse to other platforms supporting it. This means you will have data in multiple copies, which can lead to critical issues such as data drift, model decay, etc.
+
+Another hindrance to running advanced analytical workloads on top of a data warehouse is that it only has support for structured data. But, the rapid generation and availability of other types of data, such as semi-structured and unstructured data (JSON, images, texts, etc.), have allowed machine learning models to bring out interesting insights. For our example, this could be understanding the sentiments of all the new booking reviews made in the last quarter. This ultimately impacts an organization’s ability to make future-oriented decisions.
+
+There are also specific design challenges in a data warehouse. If you go back to the diagram (Figure 1-2) above, you can see that all six technical components are tightly coupled in a data warehouse. Before you understand what that implies, an essential thing to observe is that both the file and the table formats are internal to a particular data warehouse. This design pattern leads to a closed form of data architecture. It means that the actual data is accessible only using the data warehouse’s compute engine, which is specifically designed to interact with the warehouse’s table and file formats. This type of architecture leaves organizations with a massive concern about locked-in data. With the increase in workloads and the vast volumes of data ingested to a warehouse over time, you are bound to that particular platform. And that means your analytical workloads, such as BI and any future tools you plan to onboard, have to run specifically on top of this particular data warehouse only. This also prevents you from migrating to another data platform that can cater specifically to your requirements.
+
+Additionally, a significant cost factor is associated with storing data in a data warehouse and using the compute engines to process that data. This cost only increases with time as you increase the number of workloads in your environment, thereby invoking more compute resources. Other than the monetary costs, there are additional overheads, such as the need for engineering teams to build and manage numerous ETL (extract, transform, load) pipelines to move data from operational systems, delayed time-to-insight on the part of the data consumers, etc. These challenges have led organizations to seek alternative data platforms that allow data to be within their control and stored in open file formats, thereby allowing downstream applications such as BI and machine learning to run parallelly with much-reduced costs. It led to the emergence of Data Lakes.
 
 ### What is Apache Iceberg?
 
