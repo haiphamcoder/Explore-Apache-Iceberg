@@ -10,6 +10,10 @@
       - [Bringing It All Together](#bringing-it-all-together)
     - [Data Warehouse](#data-warehouse)
       - [Pros and Cons of a Data Warehouse](#pros-and-cons-of-a-data-warehouse)
+    - [Data Lake](#data-lake)
+      - [Pros and Cons of a Data Lake](#pros-and-cons-of-a-data-lake)
+      - [Should I Run Analytics on the Data Lake or Data Warehouse?](#should-i-run-analytics-on-the-data-lake-or-data-warehouse)
+    - [Enter Data Lakehouse](#enter-data-lakehouse)
     - [What is Apache Iceberg?](#what-is-apache-iceberg)
   - [2. Architecture of Apache Iceberg](#2-architecture-of-apache-iceberg)
     - [Data Layer](#data-layer)
@@ -143,6 +147,106 @@ Another hindrance to running advanced analytical workloads on top of a data ware
 There are also specific design challenges in a data warehouse. If you go back to the diagram (Figure 1-2) above, you can see that all six technical components are tightly coupled in a data warehouse. Before you understand what that implies, an essential thing to observe is that both the file and the table formats are internal to a particular data warehouse. This design pattern leads to a closed form of data architecture. It means that the actual data is accessible only using the data warehouse’s compute engine, which is specifically designed to interact with the warehouse’s table and file formats. This type of architecture leaves organizations with a massive concern about locked-in data. With the increase in workloads and the vast volumes of data ingested to a warehouse over time, you are bound to that particular platform. And that means your analytical workloads, such as BI and any future tools you plan to onboard, have to run specifically on top of this particular data warehouse only. This also prevents you from migrating to another data platform that can cater specifically to your requirements.
 
 Additionally, a significant cost factor is associated with storing data in a data warehouse and using the compute engines to process that data. This cost only increases with time as you increase the number of workloads in your environment, thereby invoking more compute resources. Other than the monetary costs, there are additional overheads, such as the need for engineering teams to build and manage numerous ETL (extract, transform, load) pipelines to move data from operational systems, delayed time-to-insight on the part of the data consumers, etc. These challenges have led organizations to seek alternative data platforms that allow data to be within their control and stored in open file formats, thereby allowing downstream applications such as BI and machine learning to run parallelly with much-reduced costs. It led to the emergence of Data Lakes.
+
+### Data Lake
+
+While a data warehouse provides a mechanism for running analytics on structured data, it still had several issues that left a need for different solutions:
+
+- A data warehouse could only store structured data
+- Storage in a data warehouse is generally more expensive than on-prem Hadoop clusters or cloud object storage.
+
+To address these issues the goal was to have an alternative storage solution that was cheaper and could store all our data. This is what’s called the data lake.
+
+Originally, you’d use a Hadoop to allow you to use a cluster of inexpensive computers to store large amounts of structured and unstructured data. Although it wasn’t enough to just be able to store all this data. You’d want to run analytics on it too.
+
+The Hadoop ecosystem included MapReduce, an analytics framework from which you’d write analytics jobs in Java and run them on the cluster. Many analysts are more comfortable writing SQL than Java, so Hive was created to convert SQL statements into MapReduce jobs.
+
+To write SQL, a mechanism to distinguish which files in our storage are part of the dataset or table we want to run the SQL against was needed. This resulted in the birth of the Hive table format which recognized a directory and the files inside it as a table.
+
+Over time. people moved away from using Hadoop clusters to using Cloud Object storage as it was easier to manage and cheaper to use. MapReduce also fell out of favor for other distributed query engines like Apache Spark, Presto, and Dremio. What did stick around was the Hive table format which became the standard in the space for recognizing files in your storage as singular tables on which you can run analytics.
+
+A distinguishing feature of the data lake as compared to the data warehouse is the ability to leverage different compute engines for different workloads. This is important because there’s never been a silver bullet of a compute engine that is best for every workload. This is just inherent to the nature of computing since there are always tradeoffs, and what you decide to tradeoff determines what a given system is good for and what it is not as well suited for.
+
+Note that in data lakes, there isn’t really any service that fulfills the needs of the storage engine function. Generally the compute engine decides how to write the data, then the data is usually never revisited and optimized, unless rewriting entire tables or partitions which is usually done on an ad-hoc basis. Refer to Figure 1-3 to see how the components of a data lake interact with one another.
+
+![Figure 1-3. Technical components in a data lake](image-10.png)
+*Figure 1-3. Technical components in a data lake*
+
+#### Pros and Cons of a Data Lake
+
+No architectural pattern is perfect and that applies to data lakes. While data lakes have a lot of benefits like Lower Costs, the ability to store in open formats and handle unstructured data; data lakes also have several disadvantages such as performance issues, lack of ACID guarantees and lots of configuration. You can see a summary of these pros and cons in Table 1-2.
+
+***Pro: Lower Cost***
+
+The costs of storing data and executing queries on a data lake are much lower than in a data warehouse. This makes a data lake particularly useful for enabling analytics on data that isn’t high enough priority to justify the cost of a data warehouse enabling a wider analytical reach.
+
+***Pro: Store Data in Open Formats***
+
+In a data lake you can store the data in any file format you like unlike data warehouses where you have no say in how the data is stored, which would typically be a proprietary format built for that particular data warehouse. This allows you to have more control over the data and consume the data in a greater variety of tools that can support these open formats.
+
+***Pro: Handle Unstructured Data***
+
+Data warehouses can’t handle unstructured data, so if you wanted to run analytics on unstructured data the data lake was the only option.
+
+***Con: Performance***
+
+Since each component of a data lake is decoupled, many of the optimizations that can exist in tightly coupled systems are absent. While they can be recreated, it requires a lot of effort and engineering performant to cobble the components (storage, file format, table format, engines) in a way to give you the comparable performance of a data warehouse. This made data lakes undesirable for high priority data analytics where performance and time mattered.
+
+***Con: Lots of Configuration***
+
+As previously mentioned, creating a tighter coupling of your chosen components with the level of optimizations you’d expect from a data warehouse would require significant engineering. This would result in a need for lots of data engineers to configure all these tools, which can also be costly.
+
+#### Should I Run Analytics on the Data Lake or Data Warehouse?
+
+While Data Lakes provided a great place to land all your structured and unstructured data, there were still imperfections. After running ETL to land your data in your data lake you’d generally take one of two tracks when running analytics.
+
+***A Subset of Data goes to the Data Warehouse***
+
+You’d set up an additional ETL pipeline to create a copy of a curated subset of data that is for high priority for analytics and store it in the warehouse to get the performance and flexibility of the data warehouse.
+
+This results in several issues:
+
+- Additional costs in the compute for the additional ETL work and the cost for storing a copy of data you are already storing in a data warehouse where the torage costs are often greater.
+- Additional copies of the data may be needed to populate data marts for different business lines and even more copies as analysts create physical copies of data subsets in the form of BI extracts to speed up dashboards. Leading to a web of data copies that are hard to govern, track and keep in sync.
+
+***You run analytics directly on the Data Lake***
+
+You’d use query engines that support data lake workloads like Dremio, Presto, Apache Spark, Trino, Apache Impala and more to execute queries on the data lake. These engines are generally well suited for read-only workloads. However, due to the limitations of the Hive table format, they ran into complexity when trying to update the data safely from the data lake.
+
+So the data lake and data warehouse each have their unique benefits and unique cons. It would be to our advantage to develop a new architecture that brings together all these benefits while minimizing all their faults, and that architecture is called a data lakehouse.
+
+### Enter Data Lakehouse
+
+While using a data warehouse gave us performance and ease of use, analytics on data lakes gave us lower costs and reduced data drift from a complex web of data copies. The desire to thread the needle leads to great strides and innovation leading to what we now know as the data lakehouse.
+
+What makes a data lakehouse truly unique are data lake table formats that eliminate all the previous issues with the Hive table format. You store the data in the same places you would with a data lake, you use the query engines you would use with a data lake, your data is stored in the same formats it would be on a data lake, what truly transforms your world from a “read only” data to a “center of my data world” data lakehouse is the table format (refer to Figure 1-4). Table formats enabled better consistency, performance and ACID guarantees when working with data directly on your data lake storage leading to several value propositions.
+
+***Fewer Copies, Less Drift***
+
+With ACID guarantees and better performance you can now move workloads typically saved for the data warehouse like updates and other data manipulation. If you don’t have to move your data to the lakehouse you can have a more streamlined architecture with fewer copies. Fewer copies mean less storage costs, less compute costs from moving data to a data warehouse, and better governance of your data to maintain compliance with regulations and internal controls.
+
+***Faster Queries, Fast Insights***
+
+The end goal is always to get business value from quality insights from our data, everything is else just steps to that end. If you can get faster queries that means you can get insights faster. Data Lakehouses enable faster performing queries by using optimizations at the query engine, table format and file format.
+
+***Mistakes Don’t Have to Hurt***
+
+Data Lakehouse table formats enable the possibility to undo mistakes by using snapshot isolation, allowing you to revert the table back to prior snapshots. You can work with your data but not have to be up at night wondering if a mistake will lead to hours of auditing, repairing then backfilling.
+
+![Figure 1-4. Technical components in a data lakehouse](image-11.png)
+*Figure 1-4. Technical components in a data lakehouse*
+
+***Affordable Architecture is Business Value***
+
+There are two ways to increase profits, increase revenue and lower costs, and data lakehouses not only help you get business insights to drive up revenue but can also help you lower costs. Reduce storage costs from avoiding duplication of your data, avoid additional compute costs from additional ETL work to move data and enjoy lowers prices for the storage and compute you are using relative to typical data warehouse rates.
+
+***Open Architecture, Peace of Mind***
+
+Data Lakehouses are built on open formats such Apache Iceberg as a table format and Apache Parquet as a file format. Many tools can read and write to these formats which allows you avoid vendor lock-in which results in cost creep and prevents tool lock-out where you data sits in formats in which tools that could be great solutions can’t access. Use open formats, you can rest easy that your data won’t be siloed into a narrow set of tools.
+
+***The Key to the Puzzle***
+
+So, with modern innovations from the open standards previously discussed, the best of all worlds can exist by operating strictly on the data lake, and this architectural pattern is the data lakehouse. The key component that makes all this possible is the table format that enables engines to have the guarantees and performance when working with your data that just didn’t exist before, now let’s get started with the Apache Iceberg table format.
 
 ### What is Apache Iceberg?
 
