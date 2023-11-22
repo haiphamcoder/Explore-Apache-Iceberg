@@ -596,6 +596,20 @@ In the end, the engine atomically updates the catalog to refer to the new metada
 
 ### 5.1. Compaction
 
+Every procedure that any process has to do comes at a cost in terms of time. Stated differently, the more steps to doing something, the longer it will take. So when you are querying your Apache Iceberg tables, each file needs to be opened, scanned and when done, closed. The more files you have to scan for a query the more of a cost these file operations will put on your query. This problem is magnified in the world of streaming or “real time” data where data is ingested as it is created, creating lots of files with only a few records in each.
+
+In contrast, batch ingestion where you may ingest a whole day or week’s worth of records in one job allows you to more efficiently plan how to write the data to more well organized files. Although either way it is possible to run into the “small files problem” where too many small files have an impact on the speed and performance of your scans because you’re doing more file operations, have a lot more metadata to read (there is metadata on each file), and have to delete more files when doing cleanup and maintenance operations. See the two scenarios in Diagram 4-1 below.
+
+![Figure 4-1. Many smaller files are slower to read than the same data in fewer larger files.](image-12.png)
+*Figure 4-1. Many smaller files are slower to read than the same data in fewer larger files.*
+
+Essentially when it comes to reading data there are fixed costs we can’t avoid and variable costs we can avoid using different strategies. Fixed costs include reading the particular data relevant to our query–we can’t avoid having to read the data to process it. Although, variable costs would include the file operations to access that data. So using many of the strategies we discuss throughout this chapter we can reduce those variable costs as much as possible. After using these strategies you’ll be using only the necessary compute to get your job done cheaper and faster (getting the job done faster has the benefit of being able to terminate compute clusters earlier reducing their costs.)
+
+The solution to this problem is to periodically take the data in all these small files and write that same data into fewer larger files. This process is called compaction as you are compacting the many into few. You can see compaction illustrated in diagram 4-2.
+
+![Figure 4-2. Compaction takes many smaller files and makes them fewer bigger files.](image-13.png)
+*Figure 4-2. Compaction takes many smaller files and makes them fewer bigger files.*
+
 ### 5.2. Sorting
 
 ### 5.3. Partitioning
